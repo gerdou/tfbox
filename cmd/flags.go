@@ -31,6 +31,12 @@ var flags = map[string]*Flag{
 		Default:   "",
 		Usage:     "Terraform version to use",
 	},
+	"interactive": {
+		Name:      "interactive",
+		Shorthand: "i",
+		Default:   "true",
+		Usage:     "Run terraform in interactive TTY mode (set to false for non-interactive)",
+	},
 }
 var shorthandToNameMap map[string]string
 
@@ -47,18 +53,55 @@ func parsArgs(args []string) []string {
 	index := 0
 	for index < len(args) {
 		arg := args[index]
-		oneDash := strings.Replace(arg, "-", "", 1)
-		twoDashes := strings.Replace(arg, "--", "", 1)
 
-		if _, exists := flags[twoDashes]; exists {
-			flags[twoDashes].Variable = args[index+1]
-			index++
-		} else if _, exists = shorthandToNameMap[oneDash]; exists {
-			flags[shorthandToNameMap[oneDash]].Variable = args[index+1]
-			index++
-		} else {
+		// Not a flag: pass straight through to terraform
+		if !strings.HasPrefix(arg, "-") {
 			tfArgs = append(tfArgs, arg)
+			index++
+			continue
 		}
+
+		// Long form: --name or --name=value
+		if strings.HasPrefix(arg, "--") {
+			name := strings.TrimPrefix(arg, "--")
+			value := ""
+			if eq := strings.IndexRune(name, '='); eq >= 0 {
+				value = name[eq+1:]
+				name = name[:eq]
+			} else if index+1 < len(args) {
+				value = args[index+1]
+			}
+
+			if flag, exists := flags[name]; exists {
+				flag.Variable = value
+				if strings.Contains(arg, "=") {
+					index++
+				} else {
+					index += 2
+				}
+				continue
+			}
+
+			// Unknown long flag: forward to terraform
+			tfArgs = append(tfArgs, arg)
+			index++
+			continue
+		}
+
+		// Short form: -x
+		name := strings.TrimPrefix(arg, "-")
+		if flagName, exists := shorthandToNameMap[name]; exists {
+			value := ""
+			if index+1 < len(args) {
+				value = args[index+1]
+			}
+			flags[flagName].Variable = value
+			index += 2
+			continue
+		}
+
+		// Unknown short flag: forward to terraform
+		tfArgs = append(tfArgs, arg)
 		index++
 	}
 

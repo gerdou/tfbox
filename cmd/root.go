@@ -2,9 +2,10 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/spf13/cobra"
 	"github.com/vahid-haghighat/tfbox/internal"
-	"os"
 )
 
 var rootCmd = &cobra.Command{
@@ -23,7 +24,12 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("you need to pass terraform commands/flags")
 		}
 
-		return internal.Run(flags["root"].Variable, flags["directory"].Variable, flags["version"].Variable, tfArgs, true)
+		interactive := true
+		if flags["interactive"].Variable == "false" {
+			interactive = false
+		}
+
+		return internal.Run(flags["root"].Variable, flags["directory"].Variable, flags["version"].Variable, tfArgs, interactive, true)
 	},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return nil

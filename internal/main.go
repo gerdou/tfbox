@@ -5,14 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/PuerkitoBio/goquery"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/stdcopy"
-	goversion "github.com/hashicorp/go-version"
-	"github.com/hashicorp/hc-install/product"
-	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 	"io"
 	"log"
 	"net/http"
@@ -21,6 +13,15 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+
+	"github.com/PuerkitoBio/goquery"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/stdcopy"
+	goversion "github.com/hashicorp/go-version"
+	"github.com/hashicorp/hc-install/product"
+	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 )
 
 var home string
@@ -36,7 +37,7 @@ func init() {
 	terraformLinuxBinariesPath = filepath.Join(home, ".tfbox", "linux")
 }
 
-func Run(rootDirectory, workingDirectory, tfVersion string, tfArgs []string, showLogs bool) error {
+func Run(rootDirectory, workingDirectory, tfVersion string, tfArgs []string, interactive, showLogs bool) error {
 	ctx := context.Background()
 
 	if rootDirectory == "" {
@@ -119,6 +120,10 @@ func Run(rootDirectory, workingDirectory, tfVersion string, tfArgs []string, sho
 		//Entrypoint:   []string{"tail", "-f", "/dev/null"},
 		AttachStdout: true,
 		AttachStdin:  true,
+		AttachStderr: true,
+		OpenStdin:    interactive,
+		StdinOnce:    interactive,
+		Tty:          interactive,
 	}
 
 	hostConfig := &container.HostConfig{
@@ -145,6 +150,47 @@ func Run(rootDirectory, workingDirectory, tfVersion string, tfArgs []string, sho
 			log.Println(err)
 		}
 	}()
+
+	if interactive {
+		attachResp, err := cli.ContainerAttach(ctx, containerResp.ID, container.AttachOptions{
+			Stream: true,
+			Stdin:  true,
+			Stdout: true,
+			Stderr: true,
+		})
+		if err != nil {
+			return err
+		}
+		defer attachResp.Close()
+
+		go func() {
+			_, err := io.Copy(os.Stdout, attachResp.Reader)
+			if err != nil && err != io.EOF {
+				log.Println(err)
+			}
+		}()
+
+		go func() {
+			_, err := io.Copy(attachResp.Conn, os.Stdin)
+			if err != nil && err != io.EOF {
+				log.Println(err)
+			}
+		}()
+
+		statusCh, errCh := cli.ContainerWait(ctx, containerResp.ID, container.WaitConditionNotRunning)
+		select {
+		case status := <-statusCh:
+			if status.Error != nil {
+				return fmt.Errorf("container error: %s", status.Error.Message)
+			}
+			return nil
+		case err := <-errCh:
+			if err != nil {
+				return fmt.Errorf("error waiting for container: %w", err)
+			}
+			return nil
+		}
+	}
 
 	done := make(chan error, 1)       // Add buffer
 	outputDone := make(chan error, 1) // Add buffer
