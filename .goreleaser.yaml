@@ -24,21 +24,21 @@ archives:
       - goos: windows
         format: zip
 brews:
-  - url_template: "https://github.com/vahid-haghighat/tfbox/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+  - url_template: "https://github.com/gerdou/tfbox/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
     download_strategy: CurlDownloadStrategy
     commit_author:
-      name: tfbox release bot
-      email: bot@goreleaser.com
-    homepage: "https://github.com/vahid-haghighat/tfbox"
+      name: gerdou-app[bot]
+      email: 2530509+gerdou-app[bot]@users.noreply.github.com
+    homepage: "https://github.com/gerdou/tfbox"
     description: "Another terraform version selector, combined with docker"
     license: "MIT"
-    test: system "#{bin}/tfbox version"
+    test: system "#{bin}/tfbox --version"
     install: bin.install "tfbox"
     repository:
-      owner: brewdex
+      owner: gerdou
       name: homebrew-tfbox
       branch: main
-      token: "{{ .Env.BREWDEX_GITHUB_TOKEN }}"
+      token: "{{ .Env.GITHUB_TOKEN }}"
 changelog:
   sort: asc
   filters:
