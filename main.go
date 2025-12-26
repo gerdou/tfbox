@@ -1,6 +1,6 @@
 package main
 
-import "github.com/vahid-haghighat/tfbox/cmd"
+import "github.com/gerdou/tfbox/cmd"
 
 func main() {
 	cmd.Execute()

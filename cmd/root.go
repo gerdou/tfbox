@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/vahid-haghighat/tfbox/internal"
+	"github.com/gerdou/tfbox/internal"
 )
 
 var rootCmd = &cobra.Command{

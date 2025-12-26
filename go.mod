@@ -1,4 +1,4 @@
-module github.com/vahid-haghighat/tfbox
+module github.com/gerdou/tfbox
 
 go 1.23.4
 
